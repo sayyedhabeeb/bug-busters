@@ -1,0 +1,17 @@
+{
+  "feature_columns": [
+    "tfidf_similarity",
+    "embedding_similarity",
+    "skill_overlap_count",
+    "skill_match_ratio",
+    "keyword_overlap",
+    "resume_word_count",
+    "job_word_count",
+    "readability_score",
+    "skill_density",
+    "resume_quality_score"
+  ],
+  "model_type": "XGBClassifier",
+  "timestamp": "2026-02-22T21:16:02.626616",
+  "library": "xgboost"
+}

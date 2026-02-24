@@ -1,0 +1,7 @@
+feature,importance
+tfidf_similarity,0.0
+skill_overlap_count,0.0
+skill_match_ratio,0.0
+keyword_overlap,0.0
+resume_word_count,0.0
+job_word_count,0.0
