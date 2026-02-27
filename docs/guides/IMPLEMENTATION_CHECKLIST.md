@@ -92,10 +92,8 @@ project-root/
 │   │   └── processor.py               # Batch processor, ranker, exporter
 │   │
 │   ├── data_processing/              # ✅ Data EDA & Processing
-│   │   ├── eda.py
-│   │   ├── augmentation.py
-│   │   ├── merge.py
-│   │   └── explorer.py
+│   │   ├── eda_engine.py             # Consolidated EDA Engine
+│   │   └── data_preprocessing.py     # Core cleaning logic
 │   │
 │   ├── database/                     # ✅ Database Layer
 │   │   ├── __init__.py
@@ -111,9 +109,7 @@ project-root/
 │   │   └── explainer.py              # 3 explainer classes
 │   │
 │   ├── feature_engineering/          # ✅ Feature Pipeline
-│   │   ├── __init__.py
-│   │   ├── pipeline.py               # Feature extraction
-│   │   └── validate.py               # Feature validation
+│   │   └── engine.py                 # Consolidated Feature Engine (TF-IDF + SBERT)
 │   │
 │   ├── logging/                      # ✅ Structured Logging
 │   │   ├── __init__.py
@@ -124,8 +120,7 @@ project-root/
 │   │   └── smart_matcher.py          # Matching engine + batch matcher
 │   │
 │   ├── modeling/                     # ✅ Model Training
-│   │   ├── __init__.py
-│   │   └── train.py
+│   │   └── engine.py                 # Consolidated XGBoost Training Engine
 │   │
 │   ├── monitoring/                   # ✅ Monitoring & Auditing
 │   │   ├── __init__.py

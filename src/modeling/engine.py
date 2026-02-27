@@ -64,6 +64,14 @@ class ModelTrainingEngine:
         X = df[self.feature_columns]
         y = df["label"]
 
+        # SAFETY CHECK: Ensure we have both classes before training!
+        if y.nunique() < 2:
+            raise ValueError(
+                f"❌ Cannot train: Only one class in labels! "
+                f"0: {(y == 0).sum()}, 1: {(y == 1).sum()}. "
+                f"Check feature engineering labeling logic and score distribution."
+            )
+
         # Calculate class weight for XGBoost
         # scale_pos_weight = sum(negative) / sum(positive)
         n_pos = sum(y == 1)

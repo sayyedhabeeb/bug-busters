@@ -442,7 +442,7 @@ class RecruitmentService:
         
         return results
 
-    def delete_job(self, db: Session, job_id: int):
+    def delete_job(self, db: Session, job_id: str):
         job = db.query(Job).filter(Job.id == job_id).first()
         if job:
             db.delete(job)
@@ -450,7 +450,7 @@ class RecruitmentService:
             return {"message": "Job deleted"}
         return {"error": "Job not found"}
 
-    def update_job(self, db: Session, job_id: int, data: JobCreate, embedding_model):
+    def update_job(self, db: Session, job_id: str, data: JobCreate, embedding_model):
         job = db.query(Job).filter(Job.id == job_id).first()
         if not job:
             return {"error": "Job not found"}

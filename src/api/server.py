@@ -84,11 +84,11 @@ async def get_jobs(db: Session = Depends(get_db)):
     return recruitment_service.get_jobs(db)
 
 @app.put("/api/jobs/{job_id}")
-async def update_job(job_id: int, job_data: JobCreate, db: Session = Depends(get_db)):
+async def update_job(job_id: str, job_data: JobCreate, db: Session = Depends(get_db)):
     return recruitment_service.update_job(db, job_id, job_data, service.embedding_model)
 
 @app.delete("/api/jobs/{job_id}")
-async def delete_job(job_id: int, db: Session = Depends(get_db)):
+async def delete_job(job_id: str, db: Session = Depends(get_db)):
     return recruitment_service.delete_job(db, job_id)
 
 @app.get("/api/recruiter/stats")

@@ -40,6 +40,8 @@ Bug busters-project/
 - **Redundancy Cleanup**: Removed 10+ duplicate and legacy files while preserved technical logic.
 - **Explainability**: Integrated SHAP values directly into the training workflow.
 - **API Consolidation**: Merged multiple server implementations into a unified `api/server.py`.
+- **Class Imbalance Fix**: Implemented `scale_pos_weight` and pre-training data validation to handle minority class learning.
+- **Dynamic Labeling Strategy**: Improved `src/feature_engineering/engine.py` with multi-tier fallback (Similarity Threshold -> Quantile Fallback) to ensure balanced training data.
 
 ## Setup
 
@@ -128,13 +130,14 @@ powershell -ExecutionPolicy Bypass -File scripts/run_project.ps1 -SkipPipeline -
 You can still run the project via:
 
 ```bash
-python main.py --eda --features --train
-```
+- **Technical Reference**: [`docs/SYSTEM_GUIDE.md`](docs/SYSTEM_GUIDE.md) - Full architecture and AI details.
+- **Progress Tracker**: [`docs/guides/IMPLEMENTATION_CHECKLIST.md`](docs/guides/IMPLEMENTATION_CHECKLIST.md) - Feature status.
+- **Usage Guide**: [`docs/MODEL_PIPELINE_GUIDE.md`](docs/MODEL_PIPELINE_GUIDE.md) - Command reference and examples.
 
-Useful direct commands:
+---
 
-```bash
-python main.py --all
-python main.py --api
-python main.py --dashboard
-```
+## Master Architecture
+The system uses a consolidated engine architecture:
+- `eda_engine.py` -> `engine.py` (FE) -> `engine.py` (Train) -> `engine.py` (Eval)
+
+*For detailed component breakdowns, see the [Master System Guide](docs/SYSTEM_GUIDE.md).*
