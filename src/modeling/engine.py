@@ -97,7 +97,6 @@ class ModelTrainingEngine:
                 learning_rate=0.1,
                 random_state=random_state,
                 scale_pos_weight=self.scale_pos_weight,
-                use_label_encoder=False,
                 eval_metric='logloss',
                 n_jobs=-1
             )
@@ -143,14 +142,22 @@ class ModelTrainingEngine:
         
         xgb_model = xgb.XGBClassifier(
             scale_pos_weight=self.scale_pos_weight,
-            use_label_encoder=False, 
             eval_metric='logloss', 
             random_state=random_state,
             n_jobs=-1
         )
         
-        # Stratified K-Fold
-        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+        # 2. Dynamic Stratified K-Fold based on minority class size
+        class_counts = y.value_counts()
+        min_samples = class_counts.min()
+        n_splits = min(5, min_samples)
+        
+        if n_splits < 2:
+            logger.warning(f"Minority class has only {min_samples} samples. Skipping CV and using default parameters.")
+            return xgb_model.fit(X, y)
+
+        logger.info(f"Using {n_splits}-fold cross-validation (limited by minority class size: {min_samples})")
+        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
         
         random_search = RandomizedSearchCV(
             estimator=xgb_model,

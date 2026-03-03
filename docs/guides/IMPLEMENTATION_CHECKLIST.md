@@ -102,7 +102,7 @@ project-root/
 │   │
 │   ├── evaluation/                   # ✅ Model Evaluation
 │   │   ├── __init__.py
-│   │   └── metrics.py
+│   │   └── engine.py                 # Evaluation Engine
 │   │
 │   ├── explainability/               # ✅ Interpretability
 │   │   ├── __init__.py
@@ -131,9 +131,9 @@ project-root/
 │   │   ├── parser.py                 # 2 parser classes
 │   │   └── quality_assessment.py     # 3 quality classes
 │   │
-│   ├── ui/                           # ✅ Streamlit Dashboard
-│   │   ├── __init__.py
-│   │   └── app.py
+├── frontend/                         # ✅ TalentMatch AI React UI
+│   ├── src/
+│   └── package.json
 │   │
 │   ├── utils/                        # ✅ Utilities
 │   │   └── __init__.py

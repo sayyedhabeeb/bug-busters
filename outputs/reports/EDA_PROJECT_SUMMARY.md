@@ -1,32 +1,32 @@
 # EDA Report — Bug Busters
 
-Datasets: **2481 resumes** · **6 jobs** · **17 skills**
+Datasets: **166 resumes** · **7718 jobs** · **296 skills**
 
 ---
 
 ## Resumes
-- Categories: 24
-- Avg word count: 795.2
-- Avg skills matched: **2.35**
-- Resumes with 0 skills: 2
+- Categories: 25
+- Avg word count: 402.8
+- Avg skills matched: **9.49**
+- Resumes with 0 skills: 0
 
 ## Jobs
 - Categories covered: 0
-- Avg word count: 60.0
-- Avg skills per job: 0.0
+- Avg word count: 533.3
+- Avg skills per job: 15.11
 
 ## Skills
-- Total: **17**
-- Top 5 in resumes: ['sql', 'java', 'javascript', 'python', 'react']
-- Top 5 in jobs: ['react', 'javascript', 'java', 'tensorflow', 'natural language processing']
+- Total: **296**
+- Top 5 in resumes: ['gin', 'sql', 'java', 'oop', 'python']
+- Top 5 in jobs: ['gin', 'java', 'sql', 'aws', 'agile']
 
 ## Labels
-- Current positive: 310125 (25.0%)
+- Current positive: 2 (0.0%)
 - Expected positive after re-run: **0** (~4.2%)
 
 ## Category Coverage
 - Categories with both resumes & jobs: **0**
-- Missing jobs: ['ACCOUNTANT', 'ADVOCATE', 'AGRICULTURE', 'APPAREL', 'ARTS', 'AUTOMOBILE', 'AVIATION', 'BANKING', 'BPO', 'BUSINESS-DEVELOPMENT', 'CHEF', 'CONSTRUCTION', 'CONSULTANT', 'DESIGNER', 'DIGITAL-MEDIA', 'ENGINEERING', 'FINANCE', 'FITNESS', 'HEALTHCARE', 'HR', 'INFORMATION-TECHNOLOGY', 'PUBLIC-RELATIONS', 'SALES', 'TEACHER']
+- Missing jobs: ['Advocate', 'Arts', 'Automation Testing', 'Blockchain', 'Business Analyst', 'Civil Engineer', 'Data Science', 'Database', 'DevOps Engineer', 'DotNet Developer', 'ETL Developer', 'Electrical Engineering', 'HR', 'Hadoop', 'Health and fitness', 'Java Developer', 'Mechanical Engineer', 'Network Security Engineer', 'Operations Manager', 'PMO', 'Python Developer', 'SAP Developer', 'Sales', 'Testing', 'Web Designing']
 
 ## Charts  (outputs/reports/eda/)
 | # | File | What it shows |

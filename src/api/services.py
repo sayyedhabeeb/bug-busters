@@ -112,29 +112,31 @@ class InferenceService:
         # No fallback. If self.xgb_model is missing, this will raise AttributeError
         model_prob = float(self.xgb_model.predict_proba(df_features)[0][1])
         
-        # --- Structured Human-Readable Logging ---
+        # --- Structured Human-Readable AI Analysis ---
         candidate_id = candidate_data.get('id', 'unknown')
         job_title = job_data.get('job_title', 'Unknown Job')
         
-        logger.info(f"\n[AI XGBOOST ENGINE] Comparison: Candidate({candidate_id}) vs Job({job_title})")
-        logger.info("+" + "-"*25 + "+" + "-"*12 + "+" + "-"*12 + "+")
-        logger.info(f"| {'ML COMPONENT':<23} | {'RAW DATA':<10} | {'MATCH %':<10} |")
-        logger.info("+" + "-"*25 + "+" + "-"*12 + "+" + "-"*12 + "+")
+        logger.info(f"\n[AI PIPELINE] Analyzed Candidate({candidate_id}) vs Job({job_title})")
+        logger.info(f"[NOTE] 'RAW DATA' represents the unscaled 0.0-1.0 similarity scores from each tool.")
+        logger.info("+" + "-"*30 + "+" + "-"*12 + "+" + "-"*12 + "+")
+        logger.info(f"| {'AI TOOL / TECHNIQUE':<28} | {'RAW DATA':<10} | {'MATCH %':<10} |")
+        logger.info("+" + "-"*30 + "+" + "-"*12 + "+" + "-"*12 + "+")
         
         log_rows = [
-            ("TF-IDF Keywords", tfidf_sim),
-            ("SBERT Semantic", emb_sim),
-            ("Skill Match Ratio", skill_match_ratio),
-            ("Keyword Overlap", keyword_overlap),
-            ("Resume Quality", quality_score)
+            ("spaCy Clean-NLP (L-Tokens)", 1.0), # Representing the tool is active
+            ("TF-IDF Keywords (sklearn)", tfidf_sim),
+            ("SBERT Semantic (Transform)", emb_sim),
+            ("Skill Match Ratio (Regex)", skill_match_ratio),
+            ("Keyword Overlap (NLP)", keyword_overlap),
+            ("Resume Quality (Heuristic)", quality_score)
         ]
         
         for name, score in log_rows:
-            logger.info(f"| {name:<23} | {score:<10.4f} | {max(0, score)*100:<9.1f}% |")
+            logger.info(f"| {name:<28} | {score:<10.4f} | {max(0, score)*100:<9.1f}% |")
             
-        logger.info("+" + "-"*25 + "+" + "-"*12 + "+" + "-"*12 + "+")
-        logger.info(f"| {'XGBOOST FINAL RANK':<23} | {model_prob:<10.4f} | {model_prob*100:<9.1f}% |")
-        logger.info("+" + "-"*25 + "+" + "-"*12 + "+" + "-"*12 + "+\n")
+        logger.info("+" + "-"*30 + "+" + "-"*12 + "+" + "-"*12 + "+")
+        logger.info(f"| {'XGBOOST FINAL RANKING':<28} | {model_prob:<10.4f} | {model_prob*100:<9.1f}% |")
+        logger.info("+" + "-"*30 + "+" + "-"*12 + "+" + "-"*12 + "+\n")
         
         # 5. Result Construction
         # Displaying real model confidence

@@ -51,12 +51,11 @@ def _load_csv(path: Path, **kwargs) -> pd.DataFrame:
 
 def load_raw_data(config: DataPreprocessingConfig) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Load raw resume, job, and skill datasets."""
-    resumes = _load_csv(config.raw_data_dir / "resume_datasets_full.csv", on_bad_lines="skip")
-    if resumes.empty:
-        resumes = _load_csv(config.raw_data_dir / "resume_dataset.csv")
-
-    jobs = _load_csv(config.raw_data_dir / "job_description_dataset.csv")
-    skills = _load_csv(config.raw_data_dir / "skill_dataset.csv")
+    # Updated paths for the new subdirectory structure
+    resumes = _load_csv(config.raw_data_dir / "resume_datasets" / "UpdatedResumeDataSet.csv", on_bad_lines="skip")
+    
+    jobs = _load_csv(config.raw_data_dir / "job_description_dataset" / "postings.csv")
+    skills = _load_csv(config.raw_data_dir / "skill dataset" / "skill_dataset_4.csv")
     return resumes, jobs, skills
 
 
@@ -87,7 +86,8 @@ def preprocess_jobs(jobs: pd.DataFrame) -> pd.DataFrame:
     if jobs.empty:
         return pd.DataFrame(columns=["job_id", "job_text"])
 
-    text_col = next((c for c in ["Job Description", "description", "job_text"] if c in jobs.columns), None)
+    # Added job_summary to the potential columns
+    text_col = next((c for c in ["Job Description", "job_summary", "description", "job_text"] if c in jobs.columns), None)
     if text_col is None:
         jobs["job_text"] = ""
     else:

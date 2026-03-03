@@ -41,7 +41,7 @@ The pipeline consists of four main stages, orchestrated by `main.py`.
 ### D. Evaluation
 - **Engine**: `src/evaluation/engine.py`
 - **Goal**: Calculate accuracy, precision, recall, and ROC-AUC.
-- **Command**: `python main.py --eval`
+- **Command**: `python main.py --evaluate`
 
 ---
 

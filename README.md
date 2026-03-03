@@ -8,14 +8,14 @@ Clean, modular machine learning project structure for resume-job matching with s
 Bug busters-project/
 |-- data/
 |   |-- raw/                    # Original input datasets
-|   |-- interim/                # Cleaned datasets from preprocessing
+|   |-- interim/                # Cleaned datasets from preprocessing (Git Ignored)
 |   `-- processed/
-|       `-- features/           # Final feature matrix and vectorizer artifacts
-|-- models/                     # Serialized trained models
-|-- notebooks/
-|   `-- 01_feature_engineering_analysis.ipynb
+|       `-- features/           # Final feature artifacts (Git Ignored)
 |-- docs/                       # Project documentation
-|-- scripts/                    # Automation scripts
+|-- outputs/
+|   |-- models/                 # Serialized trained models
+|   |-- reports/                # Analysis and evaluation reports
+|   `-- features/               # Mirrored feature artifacts for API
 |-- src/
 |   |-- data_processing/
 |   |   |-- data_preprocessing.py
@@ -28,7 +28,7 @@ Bug busters-project/
 |   |   `-- engine.py           # Consolidated Evaluation
 |   `-- api/
 |       `-- server.py           # Standardized API server
-|-- main.py                     # CLI Orchestration
+|-- main.py                     # CLI Orchestration (Unified Entrypoint)
 |-- pyproject.toml
 `-- requirements.txt
 ```
@@ -36,12 +36,11 @@ Bug busters-project/
 ## What Was Refactored
 
 - **Standardized Engines**: Consolidated logic into single "Engine" classes for EDA, Feature Engineering, Training, and Evaluation.
-- **Workflow Roadmap**: Clearly defined pipeline stages (EDA -> FE -> Training -> Evaluation -> API).
-- **Redundancy Cleanup**: Removed 10+ duplicate and legacy files while preserved technical logic.
+- **Unified CLI**: Primary pipeline orchestration via `main.py` with multi-stage flags (`--eda`, `--features`, etc.).
+- **Redundancy Cleanup**: Removed 10+ duplicate and legacy scripts while preserving all technical logic.
 - **Explainability**: Integrated SHAP values directly into the training workflow.
 - **API Consolidation**: Merged multiple server implementations into a unified `api/server.py`.
-- **Class Imbalance Fix**: Implemented `scale_pos_weight` and pre-training data validation to handle minority class learning.
-- **Dynamic Labeling Strategy**: Improved `src/feature_engineering/engine.py` with multi-tier fallback (Similarity Threshold -> Quantile Fallback) to ensure balanced training data.
+- **Dynamic Labeling**: Improved labeling strategy with similarity-based and quantile fallbacks.
 
 ## Setup
 
@@ -52,87 +51,38 @@ Bug busters-project/
 pip install -r requirements.txt
 ```
 
-## Documentation
-
-- Guides: `docs/guides`
-- Reports: `docs/reports`
-- Reference docs: `docs/reference`
-
 ## Run the Pipeline
 
-### 1. Data Preprocessing
+The system is controlled via `main.py`. You can run components individually or the full pipeline at once.
 
+### Full Pipeline Run
 ```bash
-python scripts/run_preprocessing.py
+python main.py --all
 ```
 
-Output:
-- `data/interim/resumes_clean.csv`
-- `data/interim/jobs_clean.csv`
-- `data/interim/skills_clean.csv`
+### Individual Stages
+- **Data Preprocessing & EDA**: `python main.py --eda`
+- **Feature Engineering**: `python main.py --features`
+- **Model Training**: `python main.py --train`
+- **Evaluation**: `python main.py --evaluate`
 
-### 2. Feature Engineering
+## Documentation
 
-```bash
-python scripts/run_feature_engineering.py
-```
-
-Output:
-- `data/processed/features/feature_matrix.csv`
-- `data/processed/features/tfidf_vectorizer.pkl`
-
-### 3. Model Training
-
-```bash
-python scripts/run_training.py
-```
-
-Output:
-- `models/trained/resume_job_matcher.pkl`
-- `models/trained/metrics.json`
-
-### 4. One-command Pipeline (PowerShell)
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run_pipeline.ps1
-```
-
-Optional flags:
-- `-SkipPreprocessing`
-- `-SkipFeatureEngineering`
-- `-SkipTraining`
-
-## Run Full Project (Pipeline + API + Dashboard)
-
-Use this command from the project root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run_project.ps1
-```
-
-What it does:
-- Runs preprocessing, feature engineering, and training
-- Runs model evaluation
-- Opens API and dashboard in separate PowerShell windows
-
-Quick variants:
-
-```powershell
-# Run pipeline/evaluation only (do not start services)
-powershell -ExecutionPolicy Bypass -File scripts/run_project.ps1 -NoStartServices
-
-# Start only services (skip pipeline/evaluation)
-powershell -ExecutionPolicy Bypass -File scripts/run_project.ps1 -SkipPipeline -SkipEvaluation
-```
-
-## Main CLI
-
-You can still run the project via:
-
-```bash
 - **Technical Reference**: [`docs/SYSTEM_GUIDE.md`](docs/SYSTEM_GUIDE.md) - Full architecture and AI details.
 - **Progress Tracker**: [`docs/guides/IMPLEMENTATION_CHECKLIST.md`](docs/guides/IMPLEMENTATION_CHECKLIST.md) - Feature status.
 - **Usage Guide**: [`docs/MODEL_PIPELINE_GUIDE.md`](docs/MODEL_PIPELINE_GUIDE.md) - Command reference and examples.
+
+## Start Services
+
+### API Server
+```bash
+python main.py --api
+```
+
+### TalentMatch AI UI
+```bash
+python main.py --ui
+```
 
 ---
 

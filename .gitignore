@@ -19,13 +19,27 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Data files (optional - for keeping large files)
+# Data files
 data/raw/*.csv
+data/interim/
 data/processed/*.csv
+data/processed/features/*.csv
+data/processed/features/*.pkl
+data/processed/features/*.npy
 
 # Model files
+models/
 outputs/models/*.pkl
 outputs/models/*.joblib
+outputs/models/*.png
+
+# Output artifacts
+outputs/features/
+outputs/monitoring/
+outputs/reports/eda/*.png
+outputs/reports/eda/*.json
+outputs/reports/*.png
+outputs/reports/*.json
 
 # Logs
 logs/

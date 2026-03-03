@@ -51,14 +51,19 @@ class NLPProcessor:
         return entities
 
     def clean_text(self, text: str) -> str:
-        """Normalize and clean text for further processing."""
-        # Convert to lowercase and remove non-alphanumeric chars (except spaces)
+        """Normalize and clean text using spaCy (fast and accurate)."""
+        # Convert to lowercase and simple regex clean for safety
         text = text.lower()
         text = re.sub(r'[^a-zA-Z0-9\s]', ' ', text)
         
-        # Tokenize and remove stopwords
-        tokens = word_tokenize(text)
-        cleaned_tokens = [self.lemmatizer.lemmatize(w) for w in tokens if w not in self.stop_words]
+        # Process with spaCy
+        doc = self.nlp(text)
+        
+        # Lemmatize and filter (skip stop words, punctuation, and whitespace)
+        cleaned_tokens = [
+            token.lemma_ for token in doc 
+            if not token.is_stop and not token.is_punct and token.text.strip()
+        ]
         
         return " ".join(cleaned_tokens)
 

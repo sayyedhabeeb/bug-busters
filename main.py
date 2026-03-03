@@ -14,10 +14,6 @@ import uvicorn
 
 from config.config_production import get_config
 from src.app_logging.logger import LoggerSetup, get_logger
-from src.data_processing.eda_engine import EDAEngine
-from src.feature_engineering.engine import FeatureEngine
-from src.modeling.engine import ModelTrainingEngine
-from src.evaluation.engine import EvaluationEngine
 from src.database.connection import DatabaseManager
 
 
@@ -88,22 +84,26 @@ def main() -> int:
 
     try:
         if args.eda:
+            from src.data_processing.eda_engine import EDAEngine
             logger.info("Ensuring database tables exist...")
             DatabaseManager.create_tables()
             logger.info("Running data processing...")
             EDAEngine().run_full_eda()
 
         if args.features:
+            from src.feature_engineering.engine import FeatureEngine
             logger.info("Running feature engineering...")
             FeatureEngine().run()
             _sync_feature_artifacts(logger)
 
         if args.train:
+            from src.modeling.engine import ModelTrainingEngine
             logger.info("Running model training...")
             _sync_feature_artifacts(logger)
             ModelTrainingEngine().train()
 
         if args.evaluate:
+            from src.evaluation.engine import EvaluationEngine
             logger.info("Running evaluation...")
             EvaluationEngine().evaluate()
 

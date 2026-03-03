@@ -51,8 +51,9 @@ The pipeline is orchestrated via `main.py` and follows these stages:
 | :--- | :--- |
 | **Full Pipeline** | `python main.py --all` |
 | **EDA Only** | `python main.py --eda` |
+| **Feature Engineering**| `python main.py --features` |
 | **Train Only** | `python main.py --train` |
-| **Evaluate** | `python main.py --eval` |
+| **Evaluate** | `python main.py --evaluate` |
 | **API Server** | `python main.py --api` |
 | **Dashboard** | `npm run dev` (in `frontend/`) |
 
