@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Users, Search, Filter, ArrowUpRight, Loader2, Target, X } from 'lucide-react';
+import { Users, Search, Filter, ArrowUpRight, Loader2, Target, X, CheckCircle } from 'lucide-react';
 
 const Candidates = () => {
     const [jobs, setJobs] = useState([]);
@@ -8,10 +8,11 @@ const Candidates = () => {
     const [candidates, setCandidates] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // Filtering states
+    // Filtering and Sorting states
     const [searchTerm, setSearchTerm] = useState('');
     const [minScore, setMinScore] = useState(0);
     const [minExp, setMinExp] = useState(0);
+    const [sortBy, setSortBy] = useState('match'); // 'match' or 'xgboost'
 
     useEffect(() => {
         const fetchJobs = async () => {
@@ -50,14 +51,21 @@ const Candidates = () => {
     };
 
     const filteredCandidates = useMemo(() => {
-        return candidates.filter(c => {
+        const filtered = candidates.filter(c => {
             const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 c.skills.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()));
             const matchesScore = (c.score * 100) >= minScore;
             const matchesExp = c.experience_years >= minExp;
             return matchesSearch && matchesScore && matchesExp;
         });
-    }, [candidates, searchTerm, minScore, minExp]);
+
+        return [...filtered].sort((a, b) => {
+            if (sortBy === 'xgboost') {
+                return (b.xgboost_score || 0) - (a.xgboost_score || 0);
+            }
+            return b.score - a.score;
+        });
+    }, [candidates, searchTerm, minScore, minExp, sortBy]);
 
     return (
         <div className="space-y-6">
@@ -122,13 +130,27 @@ const Candidates = () => {
                     />
                 </div>
 
-                <button
-                    onClick={() => { setSearchTerm(''); setMinScore(0); setMinExp(0); }}
-                    className="flex items-center justify-center space-x-2 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors"
-                >
-                    <X size={14} />
-                    <span>RESET FILTERS</span>
-                </button>
+                <div className="flex flex-col">
+                    <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 ml-1">Sort By</label>
+                    <select
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border rounded-lg text-sm font-bold focus:ring-primary/20"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                    >
+                        <option value="match">Match Score (%)</option>
+                        <option value="xgboost">XGBoost Raw</option>
+                    </select>
+                </div>
+
+                <div className="flex items-center justify-center gap-4">
+                    <button
+                        onClick={() => { setSearchTerm(''); setMinScore(0); setMinExp(0); setSortBy('match'); }}
+                        className="flex items-center space-x-2 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                        <X size={14} />
+                        <span>RESET</span>
+                    </button>
+                </div>
             </div>
 
             <div className="card overflow-hidden p-0 shadow-lg border-primary/10">
@@ -141,13 +163,15 @@ const Candidates = () => {
                                 <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Core Skills</th>
                                 <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Exp</th>
                                 <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Match Score</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-blue-500">XGBoost Raw</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-secondary">Skill Gaps</th>
                                 <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">CV / Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y dark:divide-gray-700">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-20 text-center">
+                                    <td colSpan="7" className="px-6 py-20 text-center">
                                         <div className="flex flex-col items-center">
                                             <Loader2 className="animate-spin text-primary mb-2" size={32} />
                                             <p className="text-gray-500 font-medium">Running XGBoost Inference...</p>
@@ -191,6 +215,41 @@ const Candidates = () => {
                                                     {Math.round(c.score * 100)}%
                                                 </span>
                                             </div>
+                                            {c.match_drivers && c.match_drivers.length > 0 && (
+                                                <div className="mt-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {c.match_drivers.slice(0, 2).map((d, idx) => (
+                                                        <div key={idx} className="flex justify-between text-[8px] text-gray-400 font-bold uppercase overflow-hidden">
+                                                            <span>{d.feature.substring(0, 15)}</span>
+                                                            <span className={d.impact > 0 ? 'text-green-500' : 'text-red-400'}>
+                                                                {d.impact > 0 ? '+' : ''}{d.impact.toFixed(3)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs font-mono font-black text-blue-600 dark:text-blue-400">
+                                                {(c.xgboost_score || 0) < 0.0001 && (c.xgboost_score || 0) > 0
+                                                    ? (c.xgboost_score || 0).toExponential(2)
+                                                    : (c.xgboost_score || 0).toFixed(4)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {c.skill_gap && c.skill_gap.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1 max-w-[120px]">
+                                                    {c.skill_gap.slice(0, 2).map(s => (
+                                                        <span key={s} className="px-1.5 py-0.5 bg-red-50 dark:bg-red-900/20 text-red-500 text-[9px] font-black uppercase rounded border border-red-100 dark:border-red-900/30">
+                                                            {s}
+                                                        </span>
+                                                    ))}
+                                                    {c.skill_gap.length > 2 && <span className="text-[9px] font-bold text-gray-400">+{c.skill_gap.length - 2}</span>}
+                                                </div>
+                                            ) : (
+                                                <span className="text-[10px] text-green-500 font-black uppercase tracking-widest flex items-center">
+                                                    <CheckCircle size={10} className="mr-1" /> Full Fit
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <a

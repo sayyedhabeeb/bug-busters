@@ -27,6 +27,7 @@ class InferenceService:
         self.vectorizer = None
         self.embedding_model = None
         self.ranker = RankingEngine()
+        self.explainer = None
         self.pipeline = None
 
     def load_resources(self):
@@ -36,8 +37,8 @@ class InferenceService:
         import torch
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        logger.info(f"Loading mandatory XGBoost from {self.models_dir / 'trained_model.pkl'}")
-        self.xgb_model = joblib.load(self.models_dir / "trained_model.pkl")
+        logger.info(f"Loading mandatory XGBoost from {self.models_dir / 'xgboost_model.pkl'}")
+        self.xgb_model = joblib.load(self.models_dir / "xgboost_model.pkl")
         
         logger.info(f"Loading mandatory TF-IDF from {self.features_dir / 'tfidf_vectorizer.pkl'}")
         import pickle
@@ -46,6 +47,16 @@ class InferenceService:
             
         logger.info("Warming up Sentence Transformer (SBERT)...")
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2', device=self.device)
+        
+        logger.info("Initializing SHAP Explainer (if possible)...")
+        try:
+            import shap
+            self.explainer = shap.TreeExplainer(self.xgb_model)
+            logger.info("SHAP Explainer initialized.")
+        except Exception as e:
+            logger.warning(f"SHAP initialization skipped: {e}")
+            self.explainer = None
+        
         logger.info("ML Resources Loaded Successfully.")
 
     def predict_and_rank(self, candidate_data: dict, job_data: dict) -> dict:
@@ -72,6 +83,8 @@ class InferenceService:
         shared = cand_skills.intersection(job_skills)
         skill_match_ratio = len(shared) / len(job_skills) if job_skills else 0.0
         
+        # Training used simple space-splitting on 'clean' text
+        # To match EXACTLY, we use the same split logic for XGBoost features
         resume_words = set(clean_resume_text.split())
         job_words = set(clean_job_text.split())
         keyword_overlap = len(resume_words.intersection(job_words)) / len(job_words) if job_words else 0.0
@@ -112,6 +125,10 @@ class InferenceService:
         # No fallback. If self.xgb_model is missing, this will raise AttributeError
         model_prob = float(self.xgb_model.predict_proba(df_features)[0][1])
         
+        # DEBUG LOGGING FOR INVESTIGATION
+        logger.info(f"[DEBUG] Feature Vector: {json.dumps(feature_dict, indent=2)}")
+        logger.info(f"[DEBUG] Model Probability: {model_prob:.6f}")
+        
         # --- Structured Human-Readable AI Analysis ---
         candidate_id = candidate_data.get('id', 'unknown')
         job_title = job_data.get('job_title', 'Unknown Job')
@@ -138,24 +155,82 @@ class InferenceService:
         logger.info(f"| {'XGBOOST FINAL RANKING':<28} | {model_prob:<10.4f} | {model_prob*100:<9.1f}% |")
         logger.info("+" + "-"*30 + "+" + "-"*12 + "+" + "-"*12 + "+\n")
         
-        # 5. Result Construction
-        # Displaying real model confidence
+        # 4.1 SHAP Explanations
+        shap_explanations = self._get_shap_explanations(df_features)
+        
+        # 5. Hybrid Scoring Ensemble
+        # Calculate experience match score (capped at 1.0)
+        job_exp_req = job_data.get("experience_required", 0)
+        cand_exp = candidate_data.get("experience_years", 0)
+        if job_exp_req > 0:
+            exp_score = min(cand_exp / job_exp_req, 1.2) / 1.2 # Bonus for over-qualification capped
+        else:
+            exp_score = 1.0
+            
+        hybrid_input = {
+            "model_probability": model_prob,
+            "embedding_similarity": emb_sim,
+            "skill_match_ratio": skill_match_ratio,
+            "experience_score": float(exp_score)
+        }
+        
+        final_score = self.ranker.calculate_hybrid_score(hybrid_input)
+        
+        # 6. Result Construction
+        missing_skills = list(job_skills - cand_skills)
+        suggestions = self.ranker.generate_suggestions(missing_skills)
+        
         return {
-            "final_score": model_prob, # Result is strictly model-driven
+            "final_score": final_score,
+            "xgboost_score": model_prob, # Keep raw probability for transparency
+            "skill_gap": missing_skills,
+            "suggestions": suggestions,
             "explanation": self.ranker.explain_score({
-                "score_breakdown": {"model": model_prob, "vector": emb_sim, "skill": skill_match_ratio, "experience": 0.5},
+                "score_breakdown": {
+                    "model": model_prob, 
+                    "vector": emb_sim, 
+                    "skill": skill_match_ratio, 
+                    "experience": exp_score
+                },
                 "embedding_similarity": emb_sim,
-                "skill_match_ratio": skill_match_ratio
+                "skill_match_ratio": skill_match_ratio,
+                "skill_gap": missing_skills
             }),
             "score_breakdown": {
                  "model": model_prob, 
                  "vector": emb_sim, 
                  "skill": skill_match_ratio, 
-                 "experience": 0.5
+                 "experience": exp_score
             },
-            "model_confidence": model_prob,
-            "vector_similarity": emb_sim
+            "match_drivers": shap_explanations
         }
+
+    def _get_shap_explanations(self, df_features: pd.DataFrame) -> List[Dict]:
+        """Calculate SHAP values and return top contributors."""
+        if not self.explainer:
+            return []
+        try:
+            import shap
+            shap_values = self.explainer.shap_values(df_features)
+            # For class 1 (match) in a binary classifier
+            # shap_values could be a list of arrays or a single array depending on model
+            impacts = shap_values[0] if isinstance(shap_values, list) else shap_values[0]
+            
+            # Map features to impacts
+            feature_names = df_features.columns.tolist()
+            contributions = []
+            for name, val in zip(feature_names, impacts):
+                contributions.append({
+                    "feature": name.replace("_", " ").title(),
+                    "impact": float(val)
+                })
+            
+            # Sort by absolute impact
+            contributions = sorted(contributions, key=lambda x: abs(x['impact']), reverse=True)
+            return contributions[:5] # Return top 5 drivers
+        except Exception as e:
+            logger.error(f"SHAP explanation failed: {e}")
+            return []
 
     def get_recommendations(self, request, db: Session):
         """Fetch candidates and rank them for a job."""
@@ -200,8 +275,12 @@ class InferenceService:
                 "skills": cand.skills or [],
                 "experience_years": cand.experience_years or 0,
                 "score": match["final_score"],
+                "xgboost_score": match.get("xgboost_score", 0.0),
+                "match_drivers": match.get("match_drivers", []),
                 "score_breakdown": match["score_breakdown"],
-                "explanation": match["explanation"]
+                "explanation": match["explanation"],
+                "skill_gap": match.get("skill_gap", []),
+                "suggestions": match.get("suggestions", "")
             })
             
         results.sort(key=lambda x: x["score"], reverse=True)
@@ -291,12 +370,16 @@ class RecruitmentService:
                 
                 if app:
                     app.match_score = score
+                    app.xgboost_score = match.get("xgboost_score", 0.0)
+                    app.match_drivers = match.get("match_drivers", [])
                     app.status = "Auto-Matched"
                 else:
                     app = Application(
                         candidate_id=cand.id,
                         job_id=job.id,
                         match_score=score,
+                        xgboost_score=match.get("xgboost_score", 0.0),
+                        match_drivers=match.get("match_drivers", []),
                         status="Auto-Matched"
                     )
                     db.add(app)
@@ -405,29 +488,33 @@ class RecruitmentService:
             "experience_years": candidate.experience_years or 0
         }
         
-        jobs = self.get_jobs(db)
+        # 2. Fetch all available jobs for ranking
+        # We rank everything to ensure the dashboard always shows valid recommendations
+        jobs = db.query(Job).all()
         results = []
         
         for job in jobs:
             job_data = {
-                "job_id": job["id"],
-                "job_title": job["title"],
-                "job_description": job["description"],
-                "required_skills": job["skills"] or [],
-                "experience_required": job["experience_required"] or 0
+                "job_id": job.id,
+                "job_title": job.title,
+                "job_description": job.description,
+                "required_skills": job.skills or [],
+                "experience_required": job.experience_required or 0
             }
             
             match = inference_service.predict_and_rank(cand_data, job_data)
             
             results.append({
-                "id": job["id"],
-                "title": job["title"],
-                "company": job["company_name"],
-                "location": job["location"],
-                "salary": job["salary_range"],
-                "type": job["job_type"],
+                "id": job.id,
+                "title": job.title,
+                "company": job.company.name if job.company else "Unknown",
+                "type": job.job_type,
                 "score": match["final_score"],
-                "explanation": match["explanation"]
+                "xgboost_score": match.get("xgboost_score", 0.0),
+                "match_drivers": match.get("match_drivers", []),
+                "explanation": match["explanation"],
+                "skill_gap": match.get("skill_gap", []),
+                "suggestions": match.get("suggestions", "")
             })
             
         results.sort(key=lambda x: x["score"], reverse=True)
@@ -491,6 +578,8 @@ class RecruitmentService:
             candidate_id=candidate.id,
             job_id=job_id,
             match_score=score,
+            xgboost_score=kwargs.get("xgboost_score", 0.0),
+            match_drivers=kwargs.get("match_drivers", []),
             status="Applied"
         )
         db.add(app)
@@ -509,6 +598,8 @@ class RecruitmentService:
                 "job_title": a.job.title,
                 "candidate_name": a.candidate.user.name if a.candidate.user else "Unknown",
                 "match_score": a.match_score / 100.0, # Scale back to 0-1 for frontend
+                "xgboost_score": a.xgboost_score or 0.0,
+                "match_drivers": a.match_drivers or [],
                 "status": a.status,
                 "applied_at": a.applied_at.isoformat() if a.applied_at else None
             })
@@ -559,12 +650,16 @@ class RecruitmentService:
                 
                 if app:
                     app.match_score = score
+                    app.xgboost_score = match.get("xgboost_score", 0.0)
+                    app.match_drivers = match.get("match_drivers", [])
                     app.status = "Auto-Matched"
                 else:
                     app = Application(
                         candidate_id=candidate.id,
                         job_id=job.id,
                         match_score=score,
+                        xgboost_score=match.get("xgboost_score", 0.0),
+                        match_drivers=match.get("match_drivers", []),
                         status="Auto-Matched"
                     )
                     db.add(app)

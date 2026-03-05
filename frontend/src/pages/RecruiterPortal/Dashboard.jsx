@@ -98,7 +98,7 @@ const RecruiterDashboard = () => {
                                     <div>
                                         <p className="font-bold text-sm group-hover:text-primary">{job.title}</p>
                                         <div className="flex items-center text-xs text-gray-400 mt-1">
-                                            <MapPin size={12} className="mr-1" /> {job.location} • {job.type}
+                                            {job.type}
                                         </div>
                                     </div>
                                     <Link to="/recruiter/candidates" className="text-xs font-bold text-secondary hover:underline">

@@ -46,6 +46,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
@@ -144,7 +146,11 @@ async def apply_to_job(request: dict, db: Session = Depends(get_db)):
     if not user_id or not job_id:
         raise HTTPException(status_code=400, detail="User ID and Job ID required")
         
-    return recruitment_service.apply(db, user_id, job_id, score)
+    return recruitment_service.apply(
+        db, user_id, job_id, score,
+        xgboost_score=request.get("xgboost_score", 0.0),
+        match_drivers=request.get("match_drivers", [])
+    )
 
 @app.get("/api/applications/recruiter/{recruiter_id}")
 async def get_recruiter_applications(recruiter_id: int, db: Session = Depends(get_db)):
@@ -193,25 +199,64 @@ async def upload_resume(
             experience_years=years
         )
         
-        # 5. Automatic Matching
-        if candidate:
-            logger.info(f"Triggering automatic matching for candidate {candidate.id}...")
-            recruitment_service.auto_match_candidate_to_all_jobs(db, candidate, service)
+        # 5. Trigger Auto-Matching for the new candidate profile
+        logger.info(f"Triggering global auto-match for candidate {candidate.id}...")
+        recruitment_service.auto_match_candidate_to_all_jobs(db, candidate, service)
         
         logger.info(f"--- Resume Analysis Complete [User: {user_id}] ---")
         logger.info(f"Skills Extracted: {skills}")
         logger.info(f"Experience: {years} years")
         
         return {
-            "message": "Resume uploaded, stored in DB, and auto-matched against all jobs!",
+            "message": "Resume uploaded and analyzed successfully! You can now check your match score against specific job roles.",
             "skills_extracted": skills,
-            "years_of_experience": years
+            "years_of_experience": years,
+            "candidate_id": candidate.id
         }
     except Exception as e:
         logger.error(f"Upload failed for user {user_id}: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/recommend/analyze")
+async def analyze_pair(request: dict, db: Session = Depends(get_db)):
+    user_id = request.get("user_id")
+    job_id = request.get("job_id")
+    
+    if not user_id or not job_id:
+        raise HTTPException(status_code=400, detail="User ID and Job ID required")
+        
+    candidate = recruitment_service.get_candidate(db, user_id)
+    job = db.query(Job).filter(Job.id == job_id).first()
+    
+    if not candidate or not job:
+        raise HTTPException(status_code=404, detail="Candidate or Job not found")
+        
+    cand_data = {
+        "skills": candidate.skills or [],
+        "resume_text": candidate.resume_text,
+        "experience_years": candidate.experience_years
+    }
+    
+    job_data = {
+        "job_id": job.id,
+        "job_title": job.title,
+        "job_description": job.description,
+        "required_skills": job.skills or [],
+        "experience_required": job.experience_required or 0
+    }
+    
+    result = service.predict_and_rank(cand_data, job_data)
+    
+    # Save/Update application with the new score and AI insights
+    recruitment_service.apply(
+        db, user_id, job_id, result["final_score"],
+        xgboost_score=result.get("xgboost_score", 0.0),
+        match_drivers=result.get("match_drivers", [])
+    )
+    
+    return result
 
 if __name__ == "__main__":
     import uvicorn

@@ -8,7 +8,6 @@ Implements XGBoost with Hyperparameter Tuning and Cross-Validation.
 import logging
 import pickle
 import json
-import shap
 import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
@@ -16,10 +15,25 @@ from typing import Dict, Any, Optional, Tuple
 import pandas as pd
 import numpy as np
 import xgboost as xgb
-from sklearn.model_selection import train_test_split, StratifiedKFold, RandomizedSearchCV
-from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
+from sklearn.model_selection import train_test_split, StratifiedKFold, RandomizedSearchCV, cross_val_score
+from sklearn.metrics import (
+    accuracy_score, 
+    classification_report, 
+    roc_auc_score,
+    precision_score,
+    recall_score,
+    f1_score
+)
 
 logger = logging.getLogger(__name__)
+
+try:
+    import shap
+    HAS_SHAP = True
+except Exception as e:
+    # Use a basic print if logger is not ready, though it should be here
+    logging.warning(f"SHAP could not be imported: {e}. Explainability features will be disabled.")
+    HAS_SHAP = False
 
 class ModelTrainingEngine:
     """
@@ -85,48 +99,101 @@ class ModelTrainingEngine:
             X, y, test_size=test_size, random_state=random_state, stratify=stratify
         )
         
-        # 4. Initialize and Train Model
+        # 4. Stage 1: Baseline XGBoost (Default Parameters)
+        logger.info("--- STAGE 1: Training Baseline XGBoost (Default Parameters) ---")
+        baseline_model = xgb.XGBClassifier(
+            random_state=random_state,
+            scale_pos_weight=self.scale_pos_weight,
+            eval_metric='logloss',
+            n_jobs=-1
+        )
+        baseline_model.fit(X_train, y_train)
+        
+        y_pred_base = baseline_model.predict(X_test)
+        y_prob_base = baseline_model.predict_proba(X_test)[:, 1]
+        baseline_metrics = self._get_metrics(y_test, y_pred_base, y_prob_base)
+        
+        # 5. Stage 2: Cross-Validation Score
+        logger.info("--- STAGE 2: 5-Fold Cross-Validation ---")
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+        cv_scores = cross_val_score(baseline_model, X_train, y_train, cv=cv, scoring='roc_auc', n_jobs=-1)
+        mean_cv_roc_auc = cv_scores.mean()
+        logger.info(f"Mean CV ROC-AUC: {mean_cv_roc_auc:.4f}")
+
+        # 6. Stage 3: Hyperparameter Tuning and Best Model
+        results = {
+            "Baseline (Default)": baseline_metrics,
+            "CV Score (Mean ROC-AUC)": mean_cv_roc_auc
+        }
+
         if tune:
-            logger.info("Starting Hyperparameter Tuning (XGBoost)...")
-            self.model = self._tune_xgboost(X_train, y_train, random_state)
+            logger.info("--- STAGE 3: Hyperparameter Tuning (RandomizedSearchCV) ---")
+            self.model, best_cv_score = self._tune_xgboost(X_train, y_train, random_state)
+            
+            y_pred_tuned = self.model.predict(X_test)
+            y_prob_tuned = self.model.predict_proba(X_test)[:, 1]
+            tuned_metrics = self._get_metrics(y_test, y_pred_tuned, y_prob_tuned)
+            results["Tuned Best Model"] = tuned_metrics
+            results["Best CV Score (Tuning)"] = best_cv_score
         else:
-            logger.info("Training Default XGBoost...")
-            self.model = xgb.XGBClassifier(
-                n_estimators=100,
-                max_depth=6,
-                learning_rate=0.1,
-                random_state=random_state,
-                scale_pos_weight=self.scale_pos_weight,
-                eval_metric='logloss',
-                n_jobs=-1
-            )
-            self.model.fit(X_train, y_train)
+            self.model = baseline_model
+            results["Tuned Best Model"] = baseline_metrics # Same as baseline if no tuning
+
+        # 7. Final Comparison and Results
+        self._print_comparison(results)
         
-        # 5. Evaluate
-        train_acc = self.model.score(X_train, y_train)
-        test_acc = self.model.score(X_test, y_test)
-        
-        y_prob = self.model.predict_proba(X_test)[:, 1]
-        roc_auc = roc_auc_score(y_test, y_prob) if len(np.unique(y_test)) > 1 else 0.0
-        
-        logger.info(f"Training Accuracy: {train_acc:.4f}, Test Accuracy: {test_acc:.4f}, ROC-AUC: {roc_auc:.4f}")
-        
-        # 6. Explain Model (SHAP)
+        # 8. Explain Model (SHAP)
         self.explain_model(X_test)
         
-        # 7. Save Artifacts
+        # 9. Save Artifacts
         self._save_artifacts()
         
         return {
             "model_type": "XGBClassifier",
             "feature_columns": self.feature_columns,
-            "train_accuracy": train_acc,
-            "test_accuracy": test_acc,
-            "roc_auc": roc_auc,
+            "baseline_metrics": baseline_metrics,
+            "cv_mean_roc_auc": mean_cv_roc_auc,
+            "tuned_metrics": results.get("Tuned Best Model"),
             "samples": len(df),
             "test_size": test_size,
             "tuned": tune
         }
+
+    def _get_metrics(self, y_true, y_pred, y_prob) -> Dict[str, float]:
+        """Calculate standard evaluation metrics."""
+        return {
+            "Accuracy": accuracy_score(y_true, y_pred),
+            "Precision": precision_score(y_true, y_pred, zero_division=0),
+            "Recall": recall_score(y_true, y_pred, zero_division=0),
+            "F1-score": f1_score(y_true, y_pred, zero_division=0),
+            "ROC-AUC": roc_auc_score(y_true, y_prob) if len(np.unique(y_true)) > 1 else 0.0
+        }
+
+    def _print_comparison(self, results: Dict[str, Any]):
+        """Print a clear comparison of results in the terminal."""
+        print("\n" + "="*80)
+        print(f"{'STAGE COMPARISON REPORT':^80}")
+        print("="*80)
+        
+        metrics_to_show = ["Accuracy", "Precision", "Recall", "F1-score", "ROC-AUC"]
+        
+        header = f"{'Metric':<20} | {'Baseline':<15} | {'Tuned Best':<15}"
+        print(header)
+        print("-" * len(header))
+        
+        base = results["Baseline (Default)"]
+        tuned = results.get("Tuned Best Model", {})
+        
+        for metric in metrics_to_show:
+            b_val = base.get(metric, 0)
+            t_val = tuned.get(metric, 0)
+            print(f"{metric:<20} | {b_val:<15.4f} | {t_val:<15.4f}")
+            
+        print("-" * len(header))
+        print(f"{'Mean CV ROC-AUC':<20} | {results['CV Score (Mean ROC-AUC)']:<15.4f} | {'N/A':<15}")
+        if "Best CV Score (Tuning)" in results:
+            print(f"{'Best Tuning CV Score':<20} | {'N/A':<15} | {results['Best CV Score (Tuning)']:<15.4f}")
+        print("="*80 + "\n")
 
     def _tune_xgboost(self, X, y, random_state):
         """Perform RandomizedSearchCV for XGBoost."""
@@ -175,10 +242,14 @@ class ModelTrainingEngine:
         logger.info(f"Best Parameters: {random_search.best_params_}")
         logger.info(f"Best CV Score (ROC-AUC): {random_search.best_score_:.4f}")
         
-        return random_search.best_estimator_
+        return random_search.best_estimator_, random_search.best_score_
 
     def explain_model(self, X_test: pd.DataFrame):
         """Generate SHAP values for explainability."""
+        if not HAS_SHAP:
+            logger.warning("Skipping SHAP explanation: SHAP is not available.")
+            return
+
         logger.info("Generating SHAP explanations...")
         
         # TreeExplainer for XGBoost

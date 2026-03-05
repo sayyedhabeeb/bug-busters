@@ -69,23 +69,37 @@ const Applications = () => {
                                         <div className="font-bold text-gray-700 dark:text-gray-300">{app.job_title}</div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <div className="inline-flex items-center px-2.5 py-1 bg-primary/10 text-primary text-xs font-black rounded-md">
-                                            {Math.round(app.match_score * 100)}%
+                                        <div className="inline-flex flex-col items-center">
+                                            <div className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-black rounded-md mb-1">
+                                                {Math.round(app.match_score * 100)}%
+                                            </div>
+                                            <div className="text-[9px] font-mono text-blue-500 font-bold">
+                                                XG: {(app.xgboost_score || 0).toFixed(4)}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center text-xs text-gray-500">
+                                        <div className="flex flex-center justify-center text-xs text-gray-500">
                                             <Calendar size={14} className="mr-1.5" />
                                             {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-full ${app.status === 'Auto-Matched' ? 'bg-indigo-100 text-indigo-600' :
-                                            app.status === 'Applied' ? 'bg-blue-100 text-blue-600' :
-                                                app.status === 'Accepted' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
-                                            }`}>
-                                            {app.status}
-                                        </span>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col gap-1 items-center">
+                                            <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-full ${app.status === 'Auto-Matched' ? 'bg-indigo-100 text-indigo-600' :
+                                                app.status === 'Applied' ? 'bg-blue-100 text-blue-600' :
+                                                    app.status === 'Accepted' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
+                                                }`}>
+                                                {app.status}
+                                            </span>
+                                            {app.match_drivers && app.match_drivers.length > 0 && (
+                                                <div className="flex gap-1 mt-1">
+                                                    {app.match_drivers.slice(0, 3).map((d, idx) => (
+                                                        <div key={idx} className={`w-1.5 h-1.5 rounded-full ${d.impact > 0 ? 'bg-green-400' : 'bg-red-400'}`} title={`${d.feature}: ${d.impact.toFixed(3)}`}></div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <a

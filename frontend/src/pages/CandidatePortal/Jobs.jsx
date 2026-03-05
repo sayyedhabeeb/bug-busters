@@ -8,6 +8,8 @@ const Jobs = () => {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [applying, setApplying] = useState(null);
+    const [analyzing, setAnalyzing] = useState(null);
+    const [matchResults, setMatchResults] = useState({});
     const [appliedJobs, setAppliedJobs] = useState(new Set());
 
     useEffect(() => {
@@ -24,13 +26,32 @@ const Jobs = () => {
         fetchAllJobs();
     }, []);
 
+    const checkMatch = async (jobId) => {
+        setAnalyzing(jobId);
+        try {
+            const res = await axios.post('http://localhost:8000/api/recommend/analyze', {
+                user_id: user.id,
+                job_id: jobId
+            });
+            setMatchResults(prev => ({ ...prev, [jobId]: res.data }));
+        } catch (err) {
+            console.error("Match analysis failed", err);
+            alert("Failed to analyze match. Have you uploaded your resume?");
+        } finally {
+            setAnalyzing(null);
+        }
+    };
+
     const handleApply = async (job) => {
         setApplying(job.id);
+        const matchData = matchResults[job.id] || {};
         try {
             await axios.post('http://localhost:8000/api/applications', {
                 user_id: user.id,
                 job_id: job.id,
-                score: job.score
+                score: matchData.final_score || job.score || 0.0,
+                xgboost_score: matchData.xgboost_score || 0.0,
+                match_drivers: matchData.match_drivers || []
             });
             setAppliedJobs(prev => new Set([...prev, job.id]));
             alert(`Successfully applied for ${job.title}!`);
@@ -81,35 +102,85 @@ const Jobs = () => {
                                 </p>
 
                                 <div className="flex flex-wrap gap-4 text-xs text-gray-400 font-medium">
-                                    <span className="flex items-center"><MapPin size={14} className="mr-1 text-secondary" /> {job.location || 'Remote'}</span>
-                                    <span className="flex items-center"><DollarSign size={14} className="mr-1 text-green-500" /> {job.salary_range || 'Competitive'}</span>
                                     <span className="flex items-center"><Clock size={14} className="mr-1 text-blue-500" /> {job.job_type || 'Full-time'}</span>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3 w-full md:w-auto">
-                                <button
-                                    onClick={() => handleApply(job)}
-                                    disabled={applying === job.id || appliedJobs.has(job.id)}
-                                    className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg font-black text-sm transition-all shadow-md ${appliedJobs.has(job.id)
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                                        : 'bg-secondary text-white hover:bg-secondary-dark active:scale-95 shadow-secondary/20'
-                                        }`}
-                                >
-                                    {applying === job.id ? (
-                                        <span className="flex items-center justify-center">
-                                            <Loader2 size={16} className="animate-spin mr-2" />
-                                            Applying...
-                                        </span>
-                                    ) : appliedJobs.has(job.id) ? (
-                                        'Applied'
-                                    ) : (
-                                        'Apply Now'
-                                    )}
-                                </button>
-                                <button className="p-2.5 text-gray-300 hover:text-secondary hover:bg-secondary/5 border dark:border-gray-700 rounded-lg transition-colors">
-                                    <Bookmark size={20} />
-                                </button>
+                            <div className="flex flex-col gap-3 w-full md:w-auto">
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => checkMatch(job.id)}
+                                        disabled={analyzing === job.id}
+                                        className="flex-1 md:flex-none px-4 py-2.5 rounded-lg font-black text-xs transition-all border-2 border-primary text-primary hover:bg-primary/5 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {analyzing === job.id ? (
+                                            <span className="flex items-center justify-center">
+                                                <Loader2 size={14} className="animate-spin mr-2" />
+                                                Analyzing...
+                                            </span>
+                                        ) : (
+                                            'Check AI Match'
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => handleApply(job)}
+                                        disabled={applying === job.id || appliedJobs.has(job.id)}
+                                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg font-black text-sm transition-all shadow-md ${appliedJobs.has(job.id)
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                                            : 'bg-secondary text-white hover:bg-secondary-dark active:scale-95 shadow-secondary/20'
+                                            }`}
+                                    >
+                                        {applying === job.id ? (
+                                            <span className="flex items-center justify-center">
+                                                <Loader2 size={16} className="animate-spin mr-2" />
+                                                Applying...
+                                            </span>
+                                        ) : appliedJobs.has(job.id) ? (
+                                            'Applied'
+                                        ) : (
+                                            'Apply Now'
+                                        )}
+                                    </button>
+                                </div>
+
+                                {matchResults[job.id] && (
+                                    <div className="mt-4 p-5 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 animate-in zoom-in duration-300">
+                                        <div className="flex justify-between items-center mb-5 bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                            <div>
+                                                <div className="text-gray-400 font-black uppercase tracking-widest text-[9px] mb-1">Combined AI Match Score</div>
+                                                <div className="text-4xl font-black text-gray-900 dark:text-white leading-none">{Math.round(matchResults[job.id].final_score * 100)}%</div>
+                                            </div>
+                                            <div className="w-12 h-12 rounded-full border-4 border-secondary/20 border-t-secondary flex items-center justify-center text-secondary font-black text-xs">
+                                                AI
+                                            </div>
+                                        </div>
+
+                                        {matchResults[job.id].skill_gap?.length > 0 && (
+                                            <div className="mb-5">
+                                                <div className="text-red-600 dark:text-red-400 font-black uppercase tracking-wider text-[10px] mb-2 px-1">Critical Skill Gaps</div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {matchResults[job.id].skill_gap.map(s => (
+                                                        <span key={s} className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-2 py-1 rounded border border-red-100 dark:border-red-900/30 font-black text-[10px] uppercase">{s}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100/50 dark:border-blue-900/20">
+                                            <div className="flex items-start gap-3">
+                                                <div className="mt-0.5 text-secondary">
+                                                    <Target size={16} />
+                                                </div>
+                                                <div>
+                                                    <strong className="text-secondary uppercase font-black text-[10px] block mb-1">Strategic AI Suggestion</strong>
+                                                    <p className="text-[11px] text-gray-800 dark:text-gray-300 leading-relaxed font-medium">
+                                                        {matchResults[job.id].suggestions}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

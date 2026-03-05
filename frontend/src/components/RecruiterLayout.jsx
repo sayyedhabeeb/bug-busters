@@ -12,7 +12,6 @@ const RecruiterLayout = () => {
         { icon: <Briefcase size={20} />, label: 'Job Roles', path: '/recruiter/jobs' },
         { icon: <ClipboardList size={20} />, label: 'Applications', path: '/recruiter/applications' },
         { icon: <Users size={20} />, label: 'Candidates', path: '/recruiter/candidates' },
-        { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/recruiter/analytics' },
         { icon: <Settings size={20} />, label: 'Settings', path: '/recruiter/settings' },
     ];
 

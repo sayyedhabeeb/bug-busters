@@ -70,18 +70,32 @@ class RankingEngine:
         return sorted(ranked, key=lambda x: x["hybrid_score"], reverse=True)
 
     def explain_score(self, candidate: Dict[str, Any]) -> str:
-        """Generate explanation based on breakdown."""
+        """Generate explanation based on breakdown and skill gap."""
         breakdown = candidate.get("score_breakdown", {})
+        skill_gap = candidate.get("skill_gap", [])
         
         reasons = []
-        if breakdown.get("model", 0) > 0.8:
-            reasons.append("High model confidence.")
-        if breakdown.get("vector", 0) > 0.8:
-            reasons.append("Strong semantic match.")
-        if breakdown.get("skill", 0) < 0.5:
-            reasons.append("Missing some required skills.")
-            
-        if not reasons:
-            return "Moderate match across criteria."
+        model_score = breakdown.get("model", 0)
+        
+        if model_score > 0.8:
+            reasons.append("The AI model identifies you as a top-tier candidate for this role.")
+        elif model_score > 0.5:
+            reasons.append("Good match based on your professional profile.")
+        else:
+            reasons.append("Match score is based on current skill alignment.")
+
+        if skill_gap:
+            reasons.append(f"Matching could be improved by adding: {', '.join(skill_gap[:3])}.")
+        else:
+            reasons.append("You have all the core skills mentioned in the job role.")
             
         return " ".join(reasons)
+
+    def generate_suggestions(self, skill_gap: List[str]) -> str:
+        """Provide actionable advice to help candidates improve their match score."""
+        if not skill_gap:
+            return "Your profile already strongly matches this role's requirements. High confidence match!"
+        
+        # Take top 3 most relevant gaps
+        gap_display = ", ".join(skill_gap[:3])
+        return f"To increase your match probability for this role, consider gaining experience in: {gap_display}. Update your resume once you've acquired these skills."

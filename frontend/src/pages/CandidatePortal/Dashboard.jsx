@@ -117,17 +117,41 @@ const CandidateDashboard = () => {
                     {recommendations.length > 0 ? (
                         <div className="space-y-4">
                             {recommendations.slice(0, 3).map((rec, i) => (
-                                <div key={i} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-3 rounded-lg group">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold group-hover:text-secondary transition-colors">{rec.title}</span>
-                                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">{rec.company}</span>
-                                    </div>
-                                    <div className="flex items-center space-x-3">
-                                        <div className="flex flex-col items-end">
-                                            <span className="text-xs font-black text-secondary">{Math.round(rec.score * 100)}% Match</span>
-                                            <span className="text-[8px] text-green-500 font-bold uppercase tracking-tighter">Auto-Matched</span>
+                                <div key={i} className="flex flex-col bg-white dark:bg-gray-900 p-5 rounded-xl group shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-gray-800">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-base font-black text-gray-900 dark:text-gray-100 group-hover:text-secondary transition-colors underline decoration-secondary/30 decoration-2 underline-offset-4">{rec.title}</span>
+                                            <span className="text-[11px] text-gray-500 uppercase tracking-widest font-black mt-1">{rec.company}</span>
+                                        </div>
+                                        <div className="flex flex-col items-end bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-700">
+                                            <div className="text-right">
+                                                <div className="text-[9px] text-gray-400 font-black uppercase tracking-tighter">AI Match Probability</div>
+                                                <div className="text-2xl font-black text-gray-900 dark:text-white leading-none mt-1">{Math.round(rec.score * 100)}%</div>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {rec.skill_gap && rec.skill_gap.length > 0 && (
+                                        <div className="mt-2 mb-4">
+                                            <span className="text-[10px] text-red-600 dark:text-red-400 font-black uppercase tracking-wider block mb-2">Missing Skills (Gap Analysis)</span>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {rec.skill_gap.map((skill, idx) => (
+                                                    <span key={idx} className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-2 py-1 rounded text-[10px] font-black border border-red-100 dark:border-red-900/30 uppercase">
+                                                        {skill}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {rec.suggestions && (
+                                        <div className="mt-auto p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100/50 dark:border-blue-900/20">
+                                            <p className="text-[11px] text-gray-800 dark:text-gray-300 leading-relaxed">
+                                                <strong className="text-secondary uppercase font-black mr-2 text-[10px]">AI Strategic Suggestion:</strong>
+                                                <span className="font-medium">{rec.suggestions}</span>
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             <Link to="/candidate/jobs" className="text-secondary text-xs font-bold hover:underline block text-center mt-2">

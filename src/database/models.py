@@ -83,6 +83,8 @@ class Application(Base):
     candidate_id = Column(String(36), ForeignKey("candidates.id", ondelete="CASCADE"))
     job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"))
     match_score = Column(Integer)
+    xgboost_score = Column(Float, nullable=True) # Persist raw model prediction
+    match_drivers = Column(JSON, nullable=True) # Persist SHAP-based insights
     status = Column(String(50), default="Applied")
     applied_at = Column(DateTime, default=datetime.utcnow)
     

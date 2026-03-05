@@ -12,6 +12,6 @@
     "resume_quality_score"
   ],
   "model_type": "XGBClassifier",
-  "timestamp": "2026-03-03T20:12:18.173563",
+  "timestamp": "2026-03-05T12:43:52.200149",
   "library": "xgboost"
 }

@@ -11,7 +11,6 @@ import CandidateLayout from './components/CandidateLayout';
 
 import Candidates from './pages/RecruiterPortal/Candidates';
 import Applications from './pages/RecruiterPortal/Applications';
-import Analytics from './pages/RecruiterPortal/Analytics';
 import Settings from './pages/RecruiterPortal/Settings';
 
 import Jobs from './pages/CandidatePortal/Jobs';
@@ -41,7 +40,6 @@ const AppRoutes = () => {
                 <Route path="jobs" element={<JobRoles />} />
                 <Route path="applications" element={<Applications />} />
                 <Route path="candidates" element={<Candidates />} />
-                <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
             </Route>
 

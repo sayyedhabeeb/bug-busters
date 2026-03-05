@@ -47,8 +47,12 @@ class MatchResult(BaseModel):
     experience_years: int = 0
     rank: int
     score: float
+    xgboost_score: float = 0.0
     score_breakdown: Dict[str, float]
+    match_drivers: List[Dict[str, Any]] = []
     explanation: Optional[str] = None
+    skill_gap: Optional[List[str]] = []
+    suggestions: Optional[str] = None
 
 class RecommendationResponse(BaseModel):
     job_id: str
